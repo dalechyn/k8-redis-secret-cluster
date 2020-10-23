@@ -19,8 +19,13 @@ spec:
         command: [ "sh", "-c" ]
         args:
           - |
+
             cp /tmp/redis/redis.conf /etc/redis/redis.conf
             
+            #inject secret password in redis config
+            echo "masterauth $(cat /etc/redis-secret/REDIS_PASSWORD | base64 -d)" >> /etc/redis/redis.conf
+            echo "requirepass $(cat /etc/redis-secret/REDIS_PASSWORD| base64 -d)" >> /etc/redis/redis.conf
+
             echo "finding master..."
             if [ "$(redis-cli -h sentinel -p 5000 ping)" != "PONG" ]; then
               echo "master not found, defaulting to redis-0"
@@ -42,6 +47,8 @@ spec:
           mountPath: /etc/redis/
         - name: config
           mountPath: /tmp/redis/
+        - name: redis-secret
+          mountPath: /etc/redis-secret
       containers:
       - name: redis
         image: redis:6.0-alpine
@@ -55,12 +62,17 @@ spec:
           mountPath: /data
         - name: redis-config
           mountPath: /etc/redis/
+        - name: redis-secret
+          mountPath: /etc/redis-secret
       volumes:
       - name: redis-config
         emptyDir: {}
       - name: config
         configMap:
           name: redis-config
+      - name: redis-secret
+        secret:
+          secretName: redis-secret
   volumeClaimTemplates:
   - metadata:
       name: data

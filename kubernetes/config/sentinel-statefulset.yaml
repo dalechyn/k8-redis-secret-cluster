@@ -19,7 +19,7 @@ spec:
         command: [ "sh", "-c" ]
         args:
           - |
-            REDIS_PASSWORD=a-very-complex-password-here
+            REDIS_PASSWORD=$(cat /etc/redis-secret/REDIS_PASSWORD | base64 -d)
             nodes=redis-0.redis.redis.svc.cluster.local,redis-1.redis.redis.svc.cluster.local,redis-2.redis.redis.svc.cluster.local
 
             for i in ${nodes//,/ }
@@ -47,6 +47,8 @@ spec:
         volumeMounts:
         - name: redis-config
           mountPath: /etc/redis/
+        - name: redis-secret
+          mountPath: /etc/redis-secret/
       containers:
       - name: sentinel
         image: redis:6.0-alpine
@@ -58,11 +60,18 @@ spec:
         volumeMounts:
         - name: redis-config
           mountPath: /etc/redis/
+        - name: redis-secret
+          mountPath: /etc/redis-secret
         - name: data
           mountPath: /data
+
       volumes:
       - name: redis-config
         emptyDir: {}
+      - name: redis-secret
+        secret:
+          secretName: redis-secret
+
   volumeClaimTemplates:
   - metadata:
       name: data
